@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ExhaChat — Single File (Password Protected)</title>
+<style>
+:root{--bg:#0f172a;--panel:#0b1220;--muted:#94a3b8;--accent:#38bdf8}
+*{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+body{margin:0;background:linear-gradient(180deg,#071233 0%, #041022 100%);color:#e6eef8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.container{width:100%;max-width:1100px;display:grid;grid-template-columns:1fr 320px;gap:20px}
+.panel{background:rgba(255,255,255,0.02);padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.header h1{margin:0;font-size:20px;color:var(--accent)}
+.header .small{color:var(--muted);font-size:13px}
+.chat-window{height:66vh;overflow:auto;padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+.msg{margin-bottom:12px;display:flex;gap:10px;align-items:flex-end}
+.msg.me{justify-content:flex-end}
+.avatar{width:36px;height:36px;border-radius:8px;background:#0ea5a6;display:flex;align-items:center;justify-content:center;color:#031124;font-weight:700}
+.bubble{max-width:70%;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);line-height:1.3}
+.msg.me .bubble{background:linear-gradient(90deg,#06b6d4,#38bdf8);color:#001019}
+.timestamp{font-size:11px;color:var(--muted);margin-top:4px}
+.chat-input{display:flex;gap:8px;margin-top:12px}
+.chat-input input{flex:1;padding:10px;border-radius:8px;border:none;background:#071232;color:#e6eef8}
+.chat-input button{padding:10px 14px;border-radius:8px;border:none;background:var(--accent);color:#001019;cursor:pointer}
+.user-list{padding:12px;border-radius:8px;height:66vh;overflow:auto;background:rgba(255,255,255,0.01)}
+.user-list h3{margin-top:0;color:var(--accent)}
+.user-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01)}
+.lock-screen{min-height:60vh;display:flex;align-items:center;justify-content:center}
+.form{width:360px;background:rgba(255,255,255,0.02);padding:18px;border-radius:12px}
+.form input{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:none;background:#071232;color:#e6eef8}
+.form button{margin-top:10px;padding:10px;width:100%;border-radius:8px;border:none;background:var(--accent);color:#001019;cursor:pointer}
+.notice{color:var(--muted);font-size:13px;margin-top:8px}
+.typing{color:var(--accent);font-size:13px;margin-top:6px}
+.footer{margin-top:14px;text-align:center;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="container" id="app" style="display:none">
+  <div class="panel">
+    <div class="header">
+      <h1>ExhaChat 🔆</h1>
+      <div class="small">Password-protected • Local tabs chat</div>
+    </div>
+    <div id="chat" class="chat-window" aria-live="polite"></div>
+    <div id="typing" class="typing" style="display:none"></div>
+    <div class="chat-input">
+      <input id="messageInput" placeholder="Type a message... (press Enter to send)" autocomplete="off" />
+      <button id="sendBtn">Send</button>
+    </div>
+    <div class="footer">Works across your browser tabs using BroadcastChannel. Password: <strong>Seashore</strong> 🔐</div>
+  </div>
+  <div class="panel user-list">
+    <h3>Users Online</h3>
+    <div id="users"></div>
+    <hr style="border:none;height:1px;background:rgba(255,255,255,0.02);margin:12px 0">
+    <div style="color:var(--muted);font-size:13px">Your name: <strong id="myName"></strong></div>
+    <button id="logout" style="margin-top:10px;padding:8px;border-radius:8px;border:none;background:#334155;color:#e6eef8;cursor:pointer">Logout</button>
+  </div>
+</div>
+
+<div class="lock-screen" id="loginScreen">
+  <div class="form">
+    <h2 style="margin:0">Welcome to ExhaChat 👋</h2>
+    <div class="notice">Enter your name and the password to join the chat.</div>
+    <input id="nameField" placeholder="Your display name" />
+    <input id="passwordField" placeholder="Password" type="password" />
+    <button id="loginBtn">Join Chat</button>
+    <div id="loginMsg" class="notice"></div>
+  </div>
+</div>
+
+<script>
+// Configuration
+const PASSWORD = "Seashore"; // as requested (case-sensitive)
+
+// Simple client-side, tab-to-tab chat using BroadcastChannel
+const bc = new BroadcastChannel("exhachat_channel_v1");
+const STORAGE_KEY = "exhachat_messages_v1";
+const PRESENCE_KEY = "exhachat_presence_v1";
+
+// State
+let myName = null;
+let myId = Math.random().toString(36).slice(2,9);
+let messages = [];
+let users = {}; // {id: {name, ts}}
+
+function formatTime(ts){ const d=new Date(ts); return d.toLocaleTimeString(); }
+
+// DOM refs
+const app = document.getElementById("app");
+const loginScreen = document.getElementById("loginScreen");
+const chatEl = document.getElementById("chat");
+const usersEl = document.getElementById("users");
+const myNameEl = document.getElementById("myName");
+const typingEl = document.getElementById("typing");
+const loginMsg = document.getElementById("loginMsg");
+
+// Load stored name if present
+if(sessionStorage.getItem("exha_name")) {
+  myName = sessionStorage.getItem("exha_name");
+  showApp();
+}
+
+// Handle BroadcastChannel messages
+bc.onmessage = (ev) => {
+  const d = ev.data;
+  if(!d || !d.type) return;
+  if(d.type === "message") {
+    receiveMessage(d.payload, false);
+  } else if(d.type === "presence") {
+    users[d.payload.id] = { name: d.payload.name, ts: Date.now() };
+    renderUsers();
+  } else if(d.type === "typing") {
+    showTyping(d.payload.name);
+  } else if(d.type === "stopped_typing") {
+    hideTyping();
+  } else if(d.type === "request_state") {
+    // send current state to new tab
+    bc.postMessage({type:"state", payload:{ messages, usersMap: users }});
+  } else if(d.type === "state") {
+    // merge messages & users
+    (d.payload.messages || []).forEach(m=> receiveMessage(m,true));
+    Object.assign(users, d.payload.usersMap||{});
+    renderUsers();
+  }
+};
+
+// Send presence every 5s
+function announcePresence(){
+  if(!myName) return;
+  bc.postMessage({type:"presence", payload:{ id: myId, name: myName }});
+  // also save presence timestamp locally
+  users[myId] = {name: myName, ts: Date.now()};
+  renderUsers();
+}
+setInterval(()=>{
+  // cleanup stale users (no presence for >12s)
+  const now=Date.now();
+  for(const id of Object.keys(users)){
+    if(now - users[id].ts > 12000){
+      delete users[id];
+    }
+  }
+  renderUsers();
+},4000);
+
+// Typing helpers
+let typingTimeout=null;
+const msgInput = document.getElementById("messageInput");
+msgInput.addEventListener("input", ()=>{
+  if(msgInput.value.length>0) bc.postMessage({type:"typing", payload:{name: myName}});
+  else bc.postMessage({type:"stopped_typing", payload:{name: myName}});
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(()=> bc.postMessage({type:"stopped_typing", payload:{name: myName}}), 2000);
+});
+
+function showTyping(name){
+  if(!name || name===myName) return;
+  typingEl.style.display="block";
+  typingEl.textContent = name + " is typing...";
+}
+function hideTyping(){ typingEl.style.display="none"; typingEl.textContent=""; }
+
+// Message send/receive
+function sendMessage(text){
+  if(!text || !text.trim()) return;
+  const msg = { id: Date.now() + "_" + Math.random().toString(36).slice(2,6), from: myName, fromId: myId, text: text.trim(), ts: Date.now() };
+  receiveMessage(msg,true);
+  bc.postMessage({type:"message", payload: msg});
+}
+
+function receiveMessage(msg, skipStore){
+  // avoid duplicates
+  if(messages.find(m=>m.id===msg.id)) return;
+  messages.push(msg);
+  renderMessages();
+  if(!skipStore) saveMessages();
+}
+
+function saveMessages(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-200))); }catch(e){}
+}
+
+function loadMessages(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) messages = JSON.parse(raw);
+  }catch(e){ messages = []; }
+}
+loadMessages();
+
+function renderMessages(){
+  chatEl.innerHTML = "";
+  messages.forEach(m=>{
+    const me = (m.fromId === myId);
+    const div = document.createElement("div");
+    div.className = "msg " + (me? "me": "");
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = (m.from||"U").slice(0,2).toUpperCase();
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerHTML = "<strong>" + escapeHtml(m.from) + "</strong><br>" + escapeHtml(m.text) + "<div class='timestamp'>" + formatTime(m.ts) + "</div>";
+    if(me){ div.appendChild(bubble); div.appendChild(avatar); }
+    else { div.appendChild(avatar); div.appendChild(bubble); }
+    chatEl.appendChild(div);
+  });
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function renderUsers(){
+  usersEl.innerHTML = "";
+  const ids = Object.keys(users);
+  ids.forEach(id=>{
+    const u = users[id];
+    const item = document.createElement("div");
+    item.className = "user-item";
+    item.innerHTML = "<div class='avatar'>" + escapeHtml((u.name||"U").slice(0,2).toUpperCase()) + "</div><div><strong>" + escapeHtml(u.name) + "</strong><div style='font-size:12px;color:var(--muted)'>"+ (id===myId? "You": "Online") + "</div></div>";
+    usersEl.appendChild(item);
+  });
+  myNameEl.textContent = myName || "";
+}
+
+// Escaping
+function escapeHtml(s){ if(!s) return ""; return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;"); }
+
+// UI actions
+document.getElementById("sendBtn").addEventListener("click", ()=>{ sendMessage(msgInput.value); msgInput.value=""; bc.postMessage({type:"stopped_typing", payload:{name: myName}}); });
+msgInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); sendMessage(msgInput.value); msgInput.value=""; bc.postMessage({type:"stopped_typing", payload:{name: myName}}); } });
+
+document.getElementById("logout").addEventListener("click", ()=>{ sessionStorage.removeItem("exha_name"); location.reload(); });
+
+// Login flow
+document.getElementById("loginBtn").addEventListener("click", attemptLogin);
+document.getElementById("passwordField").addEventListener("keydown", (e)=>{ if(e.key==="Enter") attemptLogin(); });
+
+function attemptLogin(){
+  const name = document.getElementById("nameField").value.trim();
+  const pass = document.getElementById("passwordField").value;
+  if(!name){ loginMsg.textContent = "Please enter your display name 😊"; return; }
+  if(pass !== PASSWORD){ loginMsg.textContent = "Wrong password — try again 🔐"; return; }
+  myName = name;
+  sessionStorage.setItem("exha_name", myName);
+  showApp();
+}
+
+// Show app after login
+function showApp(){
+  loginScreen.style.display="none";
+  app.style.display="grid";
+  announcePresence();
+  bc.postMessage({type:"request_state"});
+  renderUsers();
+}
+
+// When receiving state, we merged earlier. Also periodically announce presence
+setInterval(announcePresence,5000);
+
+// On load, if already have name, announce and request state
+window.addEventListener("load", ()=>{
+  if(myName){ announcePresence(); bc.postMessage({type:"request_state"}); }
+});
+
+// On unload, announce leaving
+window.addEventListener("beforeunload", ()=>{
+  try{ bc.postMessage({type:"presence", payload:{ id: myId, name: myName, leaving: true }}); }catch(e){}
+});
+
+</script>
+</body>
+</html>
