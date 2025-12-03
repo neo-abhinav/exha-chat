@@ -152,7 +152,11 @@ mobileOverlay.addEventListener("click", () => {
 
 if(sessionStorage.getItem("exha_name")) {
   myName = sessionStorage.getItem("exha_name");
+  myId = sessionStorage.getItem("exha_id") || myId;
   showApp();
+} else {
+  // Generate and save ID for this session
+  sessionStorage.setItem("exha_id", myId);
 }
 
 bc.onmessage = (ev) => {
@@ -366,7 +370,11 @@ function escapeHtml(s){ if(!s) return ""; return s.replaceAll("&","&amp;").repla
 document.getElementById("sendBtn").addEventListener("click", ()=>{ sendMessage(msgInput.value); msgInput.value=""; bc.postMessage({type:"stopped_typing", payload:{name: myName}}); });
 msgInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); sendMessage(msgInput.value); msgInput.value=""; bc.postMessage({type:"stopped_typing", payload:{name: myName}}); } });
 
-document.getElementById("logout").addEventListener("click", ()=>{ sessionStorage.removeItem("exha_name"); location.reload(); });
+document.getElementById("logout").addEventListener("click", ()=>{ 
+  sessionStorage.removeItem("exha_name"); 
+  sessionStorage.removeItem("exha_id");
+  location.reload(); 
+});
 
 document.getElementById("loginBtn").addEventListener("click", attemptLogin);
 document.getElementById("passwordField").addEventListener("keydown", (e)=>{ if(e.key==="Enter") attemptLogin(); });
@@ -378,6 +386,7 @@ function attemptLogin(){
   if(pass !== PASSWORD){ loginMsg.textContent = "Wrong password — try again 🔐"; return; }
   myName = name;
   sessionStorage.setItem("exha_name", myName);
+  sessionStorage.setItem("exha_id", myId);
   showApp();
 }
 
