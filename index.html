@@ -9,10 +9,24 @@
 *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
 body{margin:0;background:linear-gradient(180deg,#071233 0%, #041022 100%);color:#e6eef8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 .container{width:100%;max-width:1100px;display:grid;grid-template-columns:1fr 320px;gap:20px}
+@media(max-width:768px){
+  body{padding:0}
+  .container{grid-template-columns:1fr;gap:0;max-width:100%;height:100vh}
+}
 .panel{background:rgba(255,255,255,0.02);padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+@media(max-width:768px){
+  .panel{border-radius:0;height:100vh;padding:12px}
+  .panel.user-list{position:fixed;left:0;top:0;width:280px;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform 0.3s;box-shadow:4px 0 20px rgba(0,0,0,0.5)}
+  .panel.user-list.open{transform:translateX(0)}
+}
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .header h1{margin:0;font-size:20px;color:var(--accent)}
 .header .small{color:var(--muted);font-size:13px}
+.menu-btn{display:none;background:rgba(255,255,255,0.1);border:none;color:#e6eef8;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:18px}
+@media(max-width:768px){
+  .menu-btn{display:block}
+  .header .small{display:none}
+}
 .chat-tabs{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:8px}
 .chat-tab{padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;border:1px solid transparent;transition:all 0.2s}
 .chat-tab:hover{background:rgba(255,255,255,0.06)}
@@ -20,6 +34,9 @@ body{margin:0;background:linear-gradient(180deg,#071233 0%, #041022 100%);color:
 .chat-tab .close{margin-left:4px;opacity:0.6;font-weight:bold}
 .chat-tab .close:hover{opacity:1}
 .chat-window{height:58vh;overflow:auto;padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+@media(max-width:768px){
+  .chat-window{height:calc(100vh - 220px)}
+}
 .msg{margin-bottom:12px;display:flex;gap:10px;align-items:flex-end}
 .msg.me{justify-content:flex-end}
 .msg.private{opacity:0.95}
@@ -45,13 +62,22 @@ body{margin:0;background:linear-gradient(180deg,#071233 0%, #041022 100%);color:
 .notice{color:var(--muted);font-size:13px;margin-top:8px}
 .typing{color:var(--accent);font-size:13px;margin-top:6px}
 .footer{margin-top:14px;text-align:center;color:var(--muted);font-size:12px}
+@media(max-width:768px){
+  .footer{display:none}
+}
+.mobile-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999}
+@media(max-width:768px){
+  .mobile-overlay.show{display:block}
+}
 .badge{background:#ef4444;color:#fff;border-radius:10px;padding:2px 6px;font-size:11px;font-weight:bold;margin-left:4px}
 </style>
 </head>
 <body>
 <div class="container" id="app" style="display:none">
+  <div class="mobile-overlay" id="mobileOverlay"></div>
   <div class="panel">
     <div class="header">
+      <button class="menu-btn" id="menuBtn">☰</button>
       <h1>ExhaChat 🔆</h1>
       <div class="small">Group & Private Messages</div>
     </div>
@@ -109,6 +135,20 @@ const myNameEl = document.getElementById("myName");
 const typingEl = document.getElementById("typing");
 const loginMsg = document.getElementById("loginMsg");
 const chatTabsEl = document.getElementById("chatTabs");
+const menuBtn = document.getElementById("menuBtn");
+const mobileOverlay = document.getElementById("mobileOverlay");
+const userListPanel = document.querySelector(".user-list");
+
+// Mobile menu toggle
+menuBtn.addEventListener("click", () => {
+  userListPanel.classList.add("open");
+  mobileOverlay.classList.add("show");
+});
+
+mobileOverlay.addEventListener("click", () => {
+  userListPanel.classList.remove("open");
+  mobileOverlay.classList.remove("show");
+});
 
 if(sessionStorage.getItem("exha_name")) {
   myName = sessionStorage.getItem("exha_name");
@@ -302,6 +342,9 @@ function startPrivateChat(userId){
   if(userId === myId) return;
   if(!privateMessages[userId]) privateMessages[userId] = [];
   switchChat(userId);
+  // Close mobile menu
+  userListPanel.classList.remove("open");
+  mobileOverlay.classList.remove("show");
 }
 
 function renderUsers(){
