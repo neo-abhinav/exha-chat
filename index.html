@@ -5,211 +5,262 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Neon Crystal (Ultra Lite)</title>
 
-<!-- Three.js -->
+
+<!-- Load Three.js (3D Engine) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-<!-- MediaPipe -->
+<!-- Load MediaPipe Hands (AI) -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
 
 <style>
-body {
-    margin: 0;
-    background: #050505;
-    overflow: hidden;
-    font-family: monospace;
-    color: #00ffcc;
-}
-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-#ui {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 10;
-    background: rgba(0,0,0,0.7);
-    padding: 10px;
-    border: 1px solid #00ffcc;
-}
-.status-dot {
-    width: 8px;
-    height: 8px;
-    display: inline-block;
-    border-radius: 50%;
-    background: red;
-    margin-right: 5px;
-}
-.active { background: #00ff00; }
-.loading { background: yellow; }
-.input_video { display: none; }
+    body {
+        margin: 0;
+        background-color: #050505;
+        overflow: hidden;
+        font-family: monospace;
+        color: #00ffcc;
+    }
+    canvas {
+        display: block;
+        position: absolute;
+        top: 0; left: 0;
+        z-index: 1;
+    }
+    #ui {
+        position: absolute;
+        top: 10px; left: 10px;
+        z-index: 10;
+        background: rgba(0,0,0,0.7);
+        padding: 10px;
+        border: 1px solid #00ffcc;
+        border-radius: 4px;
+        pointer-events: none;
+    }
+    .status-dot {
+        display: inline-block;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: red;
+        margin-right: 5px;
+    }
+    .active { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+    .loading { background: yellow; }
+    
+    #controls {
+        position: absolute;
+        bottom: 20px; width: 100%;
+        text-align: center;
+        z-index: 10;
+        color: #666;
+        font-size: 12px;
+        pointer-events: none;
+    }
+    /* Hidden video */
+    .input_video { display: none; }
 </style>
 </head>
-
 <body>
 
+
 <div id="ui">
-    <div><span id="cam-dot" class="status-dot"></span>
-        <span id="status-text">Initializing...</span>
-    </div>
-    <div style="font-size:10px">FPS: <span id="fps">0</span></div>
+    <div><span id="cam-dot" class="status-dot"></span> <span id="status-text">Starting Graphics...</span></div>
+    <div style="margin-top:5px; font-size: 10px; color: #aaa;">FPS: <span id="fps">0</span></div>
 </div>
 
-<video class="input_video" playsinline muted></video>
+<div id="controls">
+    Control: Open Hand (Camera) OR Mouse Move (Manual)
+</div>
+
+<!-- Video Element for processing -->
+<video class="input_video" playsinline muted autoplay></video>
 
 <script>
-// ---------------- SCENE ----------------
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x050505, 0.05);
+    // --- 1. SETUP VERY SIMPLE 3D SCENE ---
+    const scene = new THREE.Scene();
+    // Add some fog for depth
+    scene.fog = new THREE.FogExp2(0x050505, 0.05);
 
-const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 100);
-camera.position.z = 5;
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.z = 5;
 
-const renderer = new THREE.WebGLRenderer({
-    antialias: false,
-    powerPreference: "low-power"
-});
-renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(1);
-document.body.appendChild(renderer.domElement);
+    const renderer = new THREE.WebGLRenderer({ 
+        antialias: false, // Turn off antialiasing for speed
+        powerPreference: "low-power" // Tell browser to prioritize battery/speed
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    // Limit pixel ratio to 1 for old screens (prevents lag on retina screens)
+    renderer.setPixelRatio(1); 
+    document.body.appendChild(renderer.domElement);
 
-// ---------------- OBJECT ----------------
-const geometry = new THREE.IcosahedronGeometry(1.5, 0);
-const material = new THREE.MeshBasicMaterial({
-    color: 0x00ffcc,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.8
-});
-const crystal = new THREE.Mesh(geometry, material);
-scene.add(crystal);
+    // --- 2. CREATE THE OBJECT (Low Poly Crystal) ---
+    // Icosahedron is very low poly (20 faces)
+    const geometry = new THREE.IcosahedronGeometry(1.5, 0); 
+    
+    // Wireframe material is very fast to render
+    const material = new THREE.MeshBasicMaterial({ 
+        color: 0x00ffcc, 
+        wireframe: true,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    const crystal = new THREE.Mesh(geometry, material);
+    scene.add(crystal);
 
-const core = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(0.5, 0),
-    new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true })
-);
-scene.add(core);
+    // Add an inner core
+    const coreGeo = new THREE.IcosahedronGeometry(0.5, 0);
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    scene.add(core);
 
-// ---------------- STATE ----------------
-const state = {
-    expansion: 0,
-    hand: false,
-    mouseX: 0
-};
+    // --- 3. STATE MANAGEMENT ---
+    const state = {
+        expansion: 0, // 0 to 1
+        isHandFound: false,
+        mouseX: 0
+    };
 
-const ui = {
-    dot: document.getElementById("cam-dot"),
-    text: document.getElementById("status-text"),
-    fps: document.getElementById("fps")
-};
+    const ui = {
+        dot: document.getElementById('cam-dot'),
+        text: document.getElementById('status-text'),
+        fps: document.getElementById('fps')
+    };
 
-// ---------------- ANIMATION ----------------
-let frames = 0, lastFPS = 0;
+    // --- 4. ANIMATION LOOP ---
+    let lastTime = 0;
+    let frameCount = 0;
+    let lastFpsTime = 0;
 
-function animate(time) {
-    requestAnimationFrame(animate);
+    function animate(time) {
+        requestAnimationFrame(animate);
 
-    if (time - lastFPS > 1000) {
-        ui.fps.textContent = frames;
-        frames = 0;
-        lastFPS = time;
+        // FPS Counter
+        if (time - lastFpsTime >= 1000) {
+            ui.fps.innerText = frameCount;
+            frameCount = 0;
+            lastFpsTime = time;
+        }
+        frameCount++;
+
+        // 1. Determine Input Source
+        let targetScale = 1.0;
+        
+        if (state.isHandFound) {
+            // If camera sees hand, use hand openness
+            targetScale = 1.0 + (state.expansion * 2.0);
+        } else {
+            // Fallback: Breathing animation + Mouse
+            const breath = Math.sin(time * 0.002) * 0.2; // Auto breathe
+            const mouseInput = Math.abs(state.mouseX) * 1.5; // Mouse override
+            targetScale = 1.0 + breath + mouseInput;
+        }
+
+        // 2. Smoothly animate the crystal (Lerp)
+        const currentScale = crystal.scale.x;
+        const smooth = 0.1; // speed of smoothing
+        const newScale = currentScale + (targetScale - currentScale) * smooth;
+
+        crystal.scale.set(newScale, newScale, newScale);
+        core.scale.set(newScale * 0.5, newScale * 0.5, newScale * 0.5);
+
+        // 3. Rotation
+        crystal.rotation.x += 0.005;
+        crystal.rotation.y += 0.01;
+        core.rotation.x -= 0.01;
+        core.rotation.y -= 0.02;
+
+        // 4. Color Shift based on size
+        const hue = (newScale * 100) % 360;
+        material.color.setHSL(hue / 360, 1, 0.5);
+
+        renderer.render(scene, camera);
     }
-    frames++;
+    
+    // Start animation immediately (don't wait for camera)
+    animate(0);
+    ui.text.innerText = "3D Ready. Loading Camera...";
+    ui.dot.className = "status-dot loading";
 
-    let target = 1;
+    // --- 5. INPUT HANDLERS (Mouse/Touch) ---
+    window.addEventListener('mousemove', (e) => {
+        // Normalize mouse from -1 to 1
+        state.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+    });
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 
-    if (state.hand) {
-        target = 1 + state.expansion * 2;
-    } else {
-        target = 1 + Math.sin(time * 0.002) * 0.2 + Math.abs(state.mouseX) * 1.5;
-    }
+    // --- 6. CAMERA & AI SETUP (Lazy Loading) ---
+    async function startCamera() {
+        try {
+            const videoElement = document.querySelector('.input_video');
+            
+            const hands = new Hands({locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`;
+            }});
 
-    const scale = crystal.scale.x + (target - crystal.scale.x) * 0.1;
-    crystal.scale.set(scale, scale, scale);
-    core.scale.set(scale * 0.5, scale * 0.5, scale * 0.5);
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 0, // 0 = LITE (Fastest), 1 = FULL
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
 
-    crystal.rotation.x += 0.005;
-    crystal.rotation.y += 0.01;
-    core.rotation.x -= 0.01;
-    core.rotation.y -= 0.02;
-
-    material.color.setHSL((scale * 100 % 360) / 360, 1, 0.5);
-
-    renderer.render(scene, camera);
-}
-animate(0);
-
-// ---------------- INPUT ----------------
-addEventListener("mousemove", e => {
-    state.mouseX = e.clientX / innerWidth * 2 - 1;
-});
-addEventListener("resize", () => {
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-});
-
-// ---------------- CAMERA ----------------
-async function startCamera() {
-    const video = document.querySelector(".input_video");
-
-    try {
-        const hands = new Hands({
-            locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`
-        });
-
-        hands.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 0,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-
-        hands.onResults(res => {
-            if (res.multiHandLandmarks?.length) {
-                state.hand = true;
-                ui.dot.className = "status-dot active";
-                ui.text.textContent = "Hand Detected";
-
-                const lm = res.multiHandLandmarks[0];
-                const wrist = lm[0];
-                const tip = lm[12]; // middle finger TIP
-
-                let d = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
-                state.expansion = Math.min(Math.max((d - 0.1) * 4, 0), 1);
-            } else {
-                state.hand = false;
-                ui.text.textContent = "Camera Active (No Hand)";
-            }
-        });
-
-        const cam = new Camera(video, {
-            onFrame: async () => {
-                if (video.videoWidth > 0) {
-                    await hands.send({ image: video });
+            hands.onResults((results) => {
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    state.isHandFound = true;
+                    ui.dot.className = "status-dot active";
+                    ui.text.innerText = "Hand Detected";
+                    
+                    // Calculate Openness
+                    const lm = results.multiHandLandmarks[0];
+                    const wrist = lm[0];
+                    const tip = lm[9]; // Middle finger tip
+                    
+                    // Distance between wrist and middle finger
+                    const dist = Math.sqrt(
+                        Math.pow(tip.x - wrist.x, 2) + 
+                        Math.pow(tip.y - wrist.y, 2)
+                    );
+                    
+                    // Map distance to 0-1 range
+                    // A fist is usually around 0.1, open hand around 0.3-0.4
+                    let open = (dist - 0.1) * 4.0; 
+                    if (open < 0) open = 0;
+                    if (open > 1) open = 1;
+                    
+                    state.expansion = open;
+                } else {
+                    state.isHandFound = false;
+                    ui.dot.className = "status-dot active"; // Still active, just no hand
+                    ui.text.innerText = "Camera Active (No Hand)";
                 }
-            },
-            width: 320,
-            height: 240
-        });
+            });
 
-        await video.play();
-        await cam.start();
+            const cameraUtils = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({image: videoElement});
+                },
+                width: 320,  // Very low resolution input for speed
+                height: 240
+            });
 
-        ui.dot.className = "status-dot active";
-        ui.text.textContent = "Camera Active";
+            await cameraUtils.start();
 
-    } catch (e) {
-        console.error(e);
-        ui.text.textContent = "Camera Failed — Mouse Mode";
+        } catch (error) {
+            console.error(error);
+            ui.dot.className = "status-dot";
+            ui.text.innerText = "Camera Failed. Use Mouse.";
+        }
     }
-}
 
-setTimeout(startCamera, 1000);
+    // Delay camera start slightly to let UI render
+    setTimeout(startCamera, 1000);
+
 </script>
-
 </body>
 </html>
