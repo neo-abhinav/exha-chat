@@ -1,415 +1,803 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ExhaChat — Group & Private Chat</title>
-<style>
-:root{--bg:#0f172a;--panel:#0b1220;--muted:#94a3b8;--accent:#38bdf8}
-*{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
-body{margin:0;background:linear-gradient(180deg,#071233 0%, #041022 100%);color:#e6eef8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.container{width:100%;max-width:1100px;display:grid;grid-template-columns:1fr 320px;gap:20px}
-@media(max-width:768px){
-  body{padding:0}
-  .container{grid-template-columns:1fr;gap:0;max-width:100%;height:100vh}
-}
-.panel{background:rgba(255,255,255,0.02);padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
-@media(max-width:768px){
-  .panel{border-radius:0;height:100vh;padding:12px}
-  .panel.user-list{position:fixed;left:0;top:0;width:280px;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform 0.3s;box-shadow:4px 0 20px rgba(0,0,0,0.5)}
-  .panel.user-list.open{transform:translateX(0)}
-}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.header h1{margin:0;font-size:20px;color:var(--accent)}
-.header .small{color:var(--muted);font-size:13px}
-.menu-btn{display:none;background:rgba(255,255,255,0.1);border:none;color:#e6eef8;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:18px}
-@media(max-width:768px){
-  .menu-btn{display:block}
-  .header .small{display:none}
-}
-.chat-tabs{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:8px}
-.chat-tab{padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;border:1px solid transparent;transition:all 0.2s}
-.chat-tab:hover{background:rgba(255,255,255,0.06)}
-.chat-tab.active{background:var(--accent);color:#001019;border-color:var(--accent)}
-.chat-tab .close{margin-left:4px;opacity:0.6;font-weight:bold}
-.chat-tab .close:hover{opacity:1}
-.chat-window{height:58vh;overflow:auto;padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
-@media(max-width:768px){
-  .chat-window{height:calc(100vh - 220px)}
-}
-.msg{margin-bottom:12px;display:flex;gap:10px;align-items:flex-end}
-.msg.me{justify-content:flex-end}
-.msg.private{opacity:0.95}
-.avatar{width:36px;height:36px;border-radius:8px;background:#0ea5a6;display:flex;align-items:center;justify-content:center;color:#031124;font-weight:700;flex-shrink:0}
-.bubble{max-width:70%;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);line-height:1.3}
-.msg.me .bubble{background:linear-gradient(90deg,#06b6d4,#38bdf8);color:#001019}
-.msg.private .bubble{background:rgba(147,51,234,0.15);border:1px solid rgba(147,51,234,0.3)}
-.msg.me.private .bubble{background:linear-gradient(90deg,#a855f7,#c084fc);color:#fff}
-.timestamp{font-size:11px;color:var(--muted);margin-top:4px}
-.chat-input{display:flex;gap:8px;margin-top:12px}
-.chat-input input{flex:1;padding:10px;border-radius:8px;border:none;background:#071232;color:#e6eef8}
-.chat-input button{padding:10px 14px;border-radius:8px;border:none;background:var(--accent);color:#001019;cursor:pointer}
-.user-list{padding:12px;border-radius:8px;height:66vh;overflow:auto;background:rgba(255,255,255,0.01)}
-.user-list h3{margin-top:0;color:var(--accent)}
-.user-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01);cursor:pointer;transition:all 0.2s}
-.user-item:hover{background:rgba(255,255,255,0.06)}
-.user-item.me{cursor:default}
-.user-item.me:hover{background:rgba(255,255,255,0.01)}
-.lock-screen{min-height:60vh;display:flex;align-items:center;justify-content:center}
-.form{width:360px;background:rgba(255,255,255,0.02);padding:18px;border-radius:12px}
-.form input{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:none;background:#071232;color:#e6eef8}
-.form button{margin-top:10px;padding:10px;width:100%;border-radius:8px;border:none;background:var(--accent);color:#001019;cursor:pointer}
-.notice{color:var(--muted);font-size:13px;margin-top:8px}
-.typing{color:var(--accent);font-size:13px;margin-top:6px}
-.footer{margin-top:14px;text-align:center;color:var(--muted);font-size:12px}
-@media(max-width:768px){
-  .footer{display:none}
-}
-.mobile-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999}
-@media(max-width:768px){
-  .mobile-overlay.show{display:block}
-}
-.badge{background:#ef4444;color:#fff;border-radius:10px;padding:2px 6px;font-size:11px;font-weight:bold;margin-left:4px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand-Controlled Particle Playground</title>
+    
+    <!-- Load Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Load MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --bg-panel: rgba(20, 20, 30, 0.7);
+            --text-color: #ffffff;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: var(--font-family);
+            color: var(--text-color);
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Video element for processing (hidden) */
+        .input_video {
+            display: none;
+        }
+
+        /* Minimal UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            z-index: 10;
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .ui-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 16px;
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #ff4444; /* Red for off, Green for on */
+            border-radius: 50%;
+            box-shadow: 0 0 5px currentColor;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            margin-top: -5px;
+            box-shadow: 0 0 10px var(--primary);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+        }
+
+        /* Shape Selectors */
+        .shape-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            margin-top: 5px;
+        }
+        
+        .shape-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 0;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 18px;
+        }
+        
+        .shape-btn:hover, .shape-btn.active {
+            background: var(--primary);
+            color: #000;
+        }
+
+        /* Toggles */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        .btn-action:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Loading / Instructions overlay */
+        #loading-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 5;
+            pointer-events: none;
+            background: rgba(0,0,0,0.6);
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .key-instruction {
+            margin-top: 10px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
+            #ui-container {
+                width: calc(100% - 40px);
+                bottom: 20px;
+                top: auto;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="container" id="app" style="display:none">
-  <div class="mobile-overlay" id="mobileOverlay"></div>
-  <div class="panel">
-    <div class="header">
-      <button class="menu-btn" id="menuBtn">☰</button>
-      <h1>ExhaChat 🔆</h1>
-      <div class="small">Group & Private Messages</div>
+
+    <!-- Camera Source -->
+    <video class="input_video"></video>
+
+    <!-- Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Panel -->
+    <div id="ui-container">
+        <div class="ui-header">
+            <h1>Particle Lab</h1>
+            <div id="cam-status" class="status-dot" title="Camera Status"></div>
+        </div>
+
+        <div class="control-group">
+            <label>Shape Template</label>
+            <div class="shape-grid">
+                <button class="shape-btn active" data-shape="sphere" title="Sphere">●</button>
+                <button class="shape-btn" data-shape="heart" title="Heart">♥</button>
+                <button class="shape-btn" data-shape="flower" title="Flower">✿</button>
+                <button class="shape-btn" data-shape="saturn" title="Saturn">🪐</button>
+                <button class="shape-btn" data-shape="buddha" title="Buddha">🧘</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Color</label>
+            <input type="color" id="color-picker" value="#00f2ff" style="width:100%; border:none; height:30px; border-radius:4px; cursor:pointer;">
+        </div>
+
+        <div class="control-group">
+            <label>Particle Count (<span id="count-val">10k</span>)</label>
+            <input type="range" id="particle-count" min="2000" max="30000" step="1000" value="10000">
+        </div>
+
+        <div class="control-group">
+            <label>Motion Noise</label>
+            <input type="range" id="noise-strength" min="0" max="2" step="0.1" value="0.5">
+        </div>
+
+        <div class="toggle-row">
+            <label style="margin:0">Camera Control</label>
+            <input type="checkbox" id="camera-toggle" checked>
+        </div>
+
+        <button class="btn-action" id="screenshot-btn">📸 Capture Snapshot</button>
+        
+        <div class="key-instruction">
+            <strong>Gestures:</strong> Open hands to expand. Close fists to contract. Move hands apart for zoom.<br>
+            <strong>Fallback:</strong> Use Mouse Move (Horizontal) to expand/contract.
+        </div>
     </div>
-    <div class="chat-tabs" id="chatTabs"></div>
-    <div id="chat" class="chat-window" aria-live="polite"></div>
-    <div id="typing" class="typing" style="display:none"></div>
-    <div class="chat-input">
-      <input id="messageInput" placeholder="Type a message... (press Enter to send)" autocomplete="off" />
-      <button id="sendBtn">Send</button>
+
+    <div id="loading-overlay">
+        <h2>Loading Hand Tracking...</h2>
+        <p>Please allow camera access.</p>
     </div>
-    <div class="footer">Click a user to start private chat • Password: <strong>Seashore</strong> 🔐</div>
-  </div>
-  <div class="panel user-list">
-    <h3>Users Online</h3>
-    <div id="users"></div>
-    <hr style="border:none;height:1px;background:rgba(255,255,255,0.02);margin:12px 0">
-    <div style="color:var(--muted);font-size:13px">Your name: <strong id="myName"></strong></div>
-    <button id="logout" style="margin-top:10px;padding:8px;border-radius:8px;border:none;background:#334155;color:#e6eef8;cursor:pointer">Logout</button>
-  </div>
-</div>
 
-<div class="lock-screen" id="loginScreen">
-  <div class="form">
-    <h2 style="margin:0">Welcome to ExhaChat 👋</h2>
-    <div class="notice">Enter your name and the password to join the chat.</div>
-    <input id="nameField" placeholder="Your display name" />
-    <input id="passwordField" placeholder="Password" type="password" />
-    <button id="loginBtn">Join Chat</button>
-    <div id="loginMsg" class="notice"></div>
-  </div>
-</div>
+    <script>
+        /**
+         * CONFIGURATION & STATE
+         */
+        const config = {
+            particleCount: 10000,
+            baseColor: new THREE.Color('#00f2ff'),
+            particleSize: 0.15,
+            noiseStrength: 0.5,
+            useCamera: true,
+            currentShape: 'sphere'
+        };
 
-<script>
-const PASSWORD = "Seashore";
+        const state = {
+            handOpenness: 0, // 0 (fist) to 1 (open)
+            handDistance: 0.5, // Distance between hands
+            isTracking: false,
+            mouse: { x: 0, y: 0 },
+            targetPositions: null, // Float32Array of target positions
+            time: 0
+        };
 
-const bc = new BroadcastChannel("exhachat_channel_v1");
-const STORAGE_KEY = "exhachat_messages_v1";
-const PRIVATE_KEY = "exhachat_private_v1";
+        // DOM Elements
+        const uiElements = {
+            camStatus: document.getElementById('cam-status'),
+            loading: document.getElementById('loading-overlay'),
+            video: document.querySelector('.input_video')
+        };
 
-let myName = null;
-let myId = Math.random().toString(36).slice(2,9);
-let messages = [];
-let privateMessages = {}; // {userId: [{...}]}
-let users = {};
-let activeChat = "group"; // "group" or userId
-let unreadCounts = {}; // {userId: count}
+        /**
+         * THREE.JS SETUP
+         */
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050505, 0.02);
 
-function formatTime(ts){ const d=new Date(ts); return d.toLocaleTimeString(); }
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 15;
 
-const app = document.getElementById("app");
-const loginScreen = document.getElementById("loginScreen");
-const chatEl = document.getElementById("chat");
-const usersEl = document.getElementById("users");
-const myNameEl = document.getElementById("myName");
-const typingEl = document.getElementById("typing");
-const loginMsg = document.getElementById("loginMsg");
-const chatTabsEl = document.getElementById("chatTabs");
-const menuBtn = document.getElementById("menuBtn");
-const mobileOverlay = document.getElementById("mobileOverlay");
-const userListPanel = document.querySelector(".user-list");
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// Mobile menu toggle
-menuBtn.addEventListener("click", () => {
-  userListPanel.classList.add("open");
-  mobileOverlay.classList.add("show");
-});
+        /**
+         * PARTICLE SYSTEM (SHADER & GEOMETRY)
+         */
+        
+        // Vertex Shader: Handles position, noise, and size based on depth
+        const vertexShader = `
+            uniform float uTime;
+            uniform float uSize;
+            uniform float uExpansion;
+            uniform float uNoiseStrength;
+            
+            attribute float aScale;
+            attribute vec3 aRandom;
+            
+            varying vec3 vColor;
+            
+            // Simplex Noise (Simplified)
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+            
+            float snoise(vec3 v) {
+                const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+                const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+                vec3 i  = floor(v + dot(v, C.yyy) );
+                vec3 x0 = v - i + dot(i, C.xxx) ;
+                vec3 g = step(x0.yzx, x0.xyz);
+                vec3 l = 1.0 - g;
+                vec3 i1 = min( g.xyz, l.zxy );
+                vec3 i2 = max( g.xyz, l.zxy );
+                vec3 x1 = x0 - i1 + C.xxx;
+                vec3 x2 = x0 - i2 + C.yyy;
+                vec3 x3 = x0 - D.yyy;
+                i = mod289(i); 
+                vec4 p = permute( permute( permute( 
+                            i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                        + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+                        + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                float n_ = 0.142857142857;
+                vec3  ns = n_ * D.wyz - D.xzx;
+                vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                vec4 x_ = floor(j * ns.z);
+                vec4 y_ = floor(j - 7.0 * x_ );
+                vec4 x = x_ *ns.x + ns.yyyy;
+                vec4 y = y_ *ns.x + ns.yyyy;
+                vec4 h = 1.0 - abs(x) - abs(y);
+                vec4 b0 = vec4( x.xy, y.xy );
+                vec4 b1 = vec4( x.zw, y.zw );
+                vec4 s0 = floor(b0)*2.0 + 1.0;
+                vec4 s1 = floor(b1)*2.0 + 1.0;
+                vec4 sh = -step(h, vec4(0.0));
+                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+                vec3 p0 = vec3(a0.xy,h.x);
+                vec3 p1 = vec3(a0.zw,h.y);
+                vec3 p2 = vec3(a1.xy,h.z);
+                vec3 p3 = vec3(a1.zw,h.w);
+                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                m = m * m;
+                return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+            }
 
-mobileOverlay.addEventListener("click", () => {
-  userListPanel.classList.remove("open");
-  mobileOverlay.classList.remove("show");
-});
+            void main() {
+                // Base position
+                vec3 pos = position;
+                
+                // Add noise based on time and random attribute
+                float noiseVal = snoise(pos * 0.5 + uTime * 0.5);
+                
+                // Expansion effect (Hands open/close)
+                // If expansion > 0, particles push out. If < 0, they suck in.
+                vec3 dir = normalize(pos);
+                pos += dir * (uExpansion * 5.0);
+                
+                // Noise displacement
+                pos += dir * noiseVal * uNoiseStrength;
 
-if(sessionStorage.getItem("exha_name")) {
-  myName = sessionStorage.getItem("exha_name");
-  myId = sessionStorage.getItem("exha_id") || myId;
-  showApp();
-} else {
-  // Generate and save ID for this session
-  sessionStorage.setItem("exha_id", myId);
-}
+                vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
 
-bc.onmessage = (ev) => {
-  const d = ev.data;
-  if(!d || !d.type) return;
-  if(d.type === "message") {
-    receiveMessage(d.payload, false);
-  } else if(d.type === "private_message") {
-    receivePrivateMessage(d.payload, false);
-  } else if(d.type === "presence") {
-    users[d.payload.id] = { name: d.payload.name, ts: Date.now() };
-    renderUsers();
-    renderTabs();
-  } else if(d.type === "typing") {
-    showTyping(d.payload.name, d.payload.chatId);
-  } else if(d.type === "stopped_typing") {
-    hideTyping();
-  } else if(d.type === "request_state") {
-    bc.postMessage({type:"state", payload:{ messages, privateMessages, usersMap: users }});
-  } else if(d.type === "state") {
-    (d.payload.messages || []).forEach(m=> receiveMessage(m,true));
-    // Merge private messages
-    if(d.payload.privateMessages) {
-      for(let uid in d.payload.privateMessages) {
-        if(!privateMessages[uid]) privateMessages[uid] = [];
-        (d.payload.privateMessages[uid] || []).forEach(pm => receivePrivateMessage(pm, true));
-      }
-    }
-    Object.assign(users, d.payload.usersMap||{});
-    renderUsers();
-    renderTabs();
-  }
-};
+                // Size attenuation
+                gl_PointSize = uSize * aScale * (300.0 / -mvPosition.z);
+            }
+        `;
 
-function announcePresence(){
-  if(!myName) return;
-  bc.postMessage({type:"presence", payload:{ id: myId, name: myName }});
-  users[myId] = {name: myName, ts: Date.now()};
-  renderUsers();
-}
+        // Fragment Shader: Soft circle + Color
+        const fragmentShader = `
+            uniform vec3 uColor;
+            void main() {
+                // Circular particle
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                if (dist > 0.5) discard;
+                
+                // Soft edge
+                float alpha = 1.0 - smoothstep(0.4, 0.5, dist);
+                
+                gl_FragColor = vec4(uColor, alpha);
+            }
+        `;
 
-setInterval(()=>{
-  const now=Date.now();
-  for(const id of Object.keys(users)){
-    if(now - users[id].ts > 12000){
-      delete users[id];
-    }
-  }
-  renderUsers();
-  renderTabs();
-},4000);
+        // Geometry Setup
+        let geometry, material, points;
+        
+        function initParticles(count) {
+            if (points) scene.remove(points);
+            
+            geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const randoms = new Float32Array(count * 3);
+            const scales = new Float32Array(count);
+            
+            // Initialize with sphere shape
+            const r = 5;
+            for (let i = 0; i < count; i++) {
+                // Sphere distribution
+                const u = Math.random();
+                const v = Math.random();
+                const theta = 2 * Math.PI * u;
+                const phi = Math.acos(2 * v - 1);
+                
+                const x = r * Math.sin(phi) * Math.cos(theta);
+                const y = r * Math.sin(phi) * Math.sin(theta);
+                const z = r * Math.cos(phi);
+                
+                positions[i*3] = x;
+                positions[i*3+1] = y;
+                positions[i*3+2] = z;
 
-let typingTimeout=null;
-const msgInput = document.getElementById("messageInput");
-msgInput.addEventListener("input", ()=>{
-  if(msgInput.value.length>0) bc.postMessage({type:"typing", payload:{name: myName, chatId: activeChat}});
-  else bc.postMessage({type:"stopped_typing", payload:{name: myName}});
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(()=> bc.postMessage({type:"stopped_typing", payload:{name: myName}}), 2000);
-});
+                randoms[i*3] = Math.random();
+                randoms[i*3+1] = Math.random();
+                randoms[i*3+2] = Math.random();
+                
+                scales[i] = Math.random() * 0.5 + 0.5;
+            }
 
-function showTyping(name, chatId){
-  if(!name || name===myName) return;
-  if(chatId && chatId !== activeChat) return;
-  typingEl.style.display="block";
-  typingEl.textContent = name + " is typing...";
-}
-function hideTyping(){ typingEl.style.display="none"; typingEl.textContent=""; }
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 3));
+            geometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+            
+            // We keep a separate CPU array for the "Target" shape positions
+            state.targetPositions = new Float32Array(positions);
 
-function sendMessage(text){
-  if(!text || !text.trim()) return;
-  if(activeChat === "group") {
-    const msg = { id: Date.now() + "_" + Math.random().toString(36).slice(2,6), from: myName, fromId: myId, text: text.trim(), ts: Date.now() };
-    receiveMessage(msg,true);
-    bc.postMessage({type:"message", payload: msg});
-  } else {
-    // Private message
-    const msg = { id: Date.now() + "_" + Math.random().toString(36).slice(2,6), from: myName, fromId: myId, toId: activeChat, text: text.trim(), ts: Date.now() };
-    receivePrivateMessage(msg, true);
-    bc.postMessage({type:"private_message", payload: msg});
-  }
-}
+            material = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0 },
+                    uColor: { value: config.baseColor },
+                    uSize: { value: config.particleSize * 20 }, // scale up for shader
+                    uExpansion: { value: 0 },
+                    uNoiseStrength: { value: config.noiseStrength }
+                },
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
 
-function receiveMessage(msg, skipStore){
-  if(messages.find(m=>m.id===msg.id)) return;
-  messages.push(msg);
-  if(activeChat === "group") renderMessages();
-  if(!skipStore) saveMessages();
-}
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+            
+            // Generate the initial shape target
+            generateShapeData(config.currentShape);
+        }
 
-function receivePrivateMessage(msg, skipStore){
-  const otherUserId = (msg.fromId === myId) ? msg.toId : msg.fromId;
-  if(!privateMessages[otherUserId]) privateMessages[otherUserId] = [];
-  if(privateMessages[otherUserId].find(m=>m.id===msg.id)) return;
-  privateMessages[otherUserId].push(msg);
-  
-  // Update unread count
-  if(activeChat !== otherUserId && msg.fromId !== myId) {
-    unreadCounts[otherUserId] = (unreadCounts[otherUserId] || 0) + 1;
-    renderTabs();
-  }
-  
-  if(activeChat === otherUserId) renderMessages();
-  if(!skipStore) savePrivateMessages();
-}
+        /**
+         * SHAPE GENERATORS (Math Patterns)
+         */
+        function generateShapeData(shapeType) {
+            config.currentShape = shapeType;
+            const count = config.particleCount;
+            const arr = new Float32Array(count * 3);
+            
+            // Helper: Random point in sphere
+            const randSphere = (rad) => {
+                const u = Math.random();
+                const v = Math.random();
+                const theta = 2 * Math.PI * u;
+                const phi = Math.acos(2 * v - 1);
+                const r = rad * Math.cbrt(Math.random()); // distribute inside volume
+                return {
+                    x: r * Math.sin(phi) * Math.cos(theta),
+                    y: r * Math.sin(phi) * Math.sin(theta),
+                    z: r * Math.cos(phi)
+                };
+            };
 
-function saveMessages(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-200))); }catch(e){}
-}
+            for (let i = 0; i < count; i++) {
+                let x, y, z;
+                const idx = i * 3;
 
-function savePrivateMessages(){
-  try{ localStorage.setItem(PRIVATE_KEY, JSON.stringify(privateMessages)); }catch(e){}
-}
+                if (shapeType === 'sphere' || shapeType === 'fireworks') {
+                    const p = randSphere(5);
+                    x=p.x; y=p.y; z=p.z;
+                } 
+                else if (shapeType === 'heart') {
+                    // Parametric Heart
+                    // x = 16sin^3(t)
+                    // y = 13cos(t) - 5cos(2t) - 2cos(3t) - cos(4t)
+                    const t = Math.random() * Math.PI * 2;
+                    // Spread indices to fill volume roughly or lines
+                    // Let's add randomness for volume
+                    const scale = 0.3;
+                    const r = 16 * Math.pow(Math.sin(t), 3);
+                    x = scale * r;
+                    y = scale * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                    z = (Math.random() - 0.5) * 2; // Thickness
+                    
+                    // Normalize and center slightly
+                    y += 1; 
+                } 
+                else if (shapeType === 'flower') {
+                    // Phyllotaxis (Sunflower)
+                    const spread = 0.1;
+                    const angle = i * 137.5 * (Math.PI / 180);
+                    const r = spread * Math.sqrt(i);
+                    x = r * Math.cos(angle);
+                    y = r * Math.sin(angle);
+                    z = (Math.random() - 0.5) * (1 - r/8) * 2; // Taper thickness at edges
+                    // Make it look like a cup/flower
+                    z += r*r * 0.05;
+                    
+                    // Rotate to face camera
+                    const tempY = y; 
+                    y = z - 2; 
+                    z = tempY;
+                }
+                else if (shapeType === 'saturn') {
+                    // Planet + Ring
+                    if (i < count * 0.4) {
+                        // Planet
+                        const p = randSphere(2.5);
+                        x=p.x; y=p.y; z=p.z;
+                    } else {
+                        // Ring
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = 3.5 + Math.random() * 2.5;
+                        x = dist * Math.cos(angle);
+                        z = dist * Math.sin(angle);
+                        y = (Math.random() - 0.5) * 0.2;
+                        
+                        // Tilt
+                        const tilt = 0.4;
+                        const tx = x;
+                        const ty = y * Math.cos(tilt) - z * Math.sin(tilt);
+                        const tz = y * Math.sin(tilt) + z * Math.cos(tilt);
+                        x=tx; y=ty; z=tz;
+                    }
+                }
+                else if (shapeType === 'buddha') {
+                     // Abstract Meditating Figure (Stacked spheres approach)
+                     const part = Math.random();
+                     let p;
+                     if (part < 0.2) { 
+                         // Head
+                         p = randSphere(1.2);
+                         y = p.y + 3.5; x = p.x; z = p.z;
+                     } else if (part < 0.6) {
+                         // Body
+                         p = randSphere(2.0);
+                         // Scale y to make oval
+                         y = p.y * 1.4; x = p.x * 1.2; z = p.z;
+                     } else {
+                         // Legs / Base
+                         const angle = Math.random() * Math.PI * 2; // full circle for lotus
+                         const rad = 2.0 + Math.random() * 1.5;
+                         x = rad * Math.cos(angle);
+                         z = rad * Math.sin(angle);
+                         y = (Math.random() - 0.5) * 1.5 - 2.5;
+                     }
+                }
 
-function loadMessages(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw) messages = JSON.parse(raw);
-    const rawPrivate = localStorage.getItem(PRIVATE_KEY);
-    if(rawPrivate) privateMessages = JSON.parse(rawPrivate);
-  }catch(e){ messages = []; privateMessages = {}; }
-}
-loadMessages();
+                arr[idx] = x;
+                arr[idx+1] = y;
+                arr[idx+2] = z;
+            }
+            
+            state.targetPositions = arr;
+        }
 
-function renderMessages(){
-  chatEl.innerHTML = "";
-  const msgs = activeChat === "group" ? messages : (privateMessages[activeChat] || []);
-  
-  msgs.forEach(m=>{
-    const me = (m.fromId === myId);
-    const div = document.createElement("div");
-    div.className = "msg " + (me? "me": "") + (activeChat !== "group" ? " private" : "");
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    avatar.textContent = (m.from||"U").slice(0,2).toUpperCase();
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-    bubble.innerHTML = "<strong>" + escapeHtml(m.from) + "</strong><br>" + escapeHtml(m.text) + "<div class='timestamp'>" + formatTime(m.ts) + "</div>";
-    if(me){ div.appendChild(bubble); div.appendChild(avatar); }
-    else { div.appendChild(avatar); div.appendChild(bubble); }
-    chatEl.appendChild(div);
-  });
-  chatEl.scrollTop = chatEl.scrollHeight;
-}
+        /**
+         * HAND TRACKING LOGIC
+         */
+        
+        function onResults(results) {
+            uiElements.loading.style.display = 'none';
+            uiElements.camStatus.style.backgroundColor = '#00ff00'; // Green
+            state.isTracking = true;
 
-function renderTabs(){
-  chatTabsEl.innerHTML = "";
-  
-  // Group tab
-  const groupTab = document.createElement("div");
-  groupTab.className = "chat-tab" + (activeChat === "group" ? " active" : "");
-  groupTab.innerHTML = "🌐 Group Chat";
-  groupTab.onclick = () => switchChat("group");
-  chatTabsEl.appendChild(groupTab);
-  
-  // Private chat tabs
-  for(let userId in privateMessages) {
-    if(!users[userId]) continue; // Skip if user offline
-    const tab = document.createElement("div");
-    tab.className = "chat-tab" + (activeChat === userId ? " active" : "");
-    const unread = unreadCounts[userId] || 0;
-    tab.innerHTML = "💬 " + escapeHtml(users[userId].name) + (unread > 0 ? "<span class='badge'>" + unread + "</span>" : "") + "<span class='close' onclick='event.stopPropagation(); closePrivateChat(\"" + userId + "\")'>×</span>";
-    tab.onclick = () => switchChat(userId);
-    chatTabsEl.appendChild(tab);
-  }
-}
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // 1. Calculate Openness (Average dist of tips from wrist)
+                const wrist = landmarks[0];
+                const tips = [8, 12, 16, 20].map(i => landmarks[i]);
+                
+                let avgDist = 0;
+                tips.forEach(tip => {
+                    const dx = tip.x - wrist.x;
+                    const dy = tip.y - wrist.y;
+                    avgDist += Math.sqrt(dx*dx + dy*dy);
+                });
+                avgDist /= 4;
+                
+                // Map avgDist: roughly 0.1 (closed) to 0.4 (open) -> 0 to 1
+                const openness = Math.max(0, Math.min(1, (avgDist - 0.15) * 4));
+                state.handOpenness = lerp(state.handOpenness, openness, 0.2); // Smooth it
 
-function switchChat(chatId){
-  activeChat = chatId;
-  if(chatId !== "group") unreadCounts[chatId] = 0;
-  renderTabs();
-  renderMessages();
-  msgInput.placeholder = chatId === "group" ? "Type a message..." : "Type a private message to " + users[chatId].name + "...";
-}
+                // 2. Calculate Distance between hands (if 2 hands detected)
+                if (results.multiHandLandmarks.length > 1) {
+                    const l1 = results.multiHandLandmarks[0][0]; // Wrist 1
+                    const l2 = results.multiHandLandmarks[1][0]; // Wrist 2
+                    const dx = l1.x - l2.x;
+                    const dy = l1.y - l2.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    state.handDistance = lerp(state.handDistance, dist, 0.1);
+                }
+            } else {
+                // No hand detected, slowly reset
+                state.handOpenness = lerp(state.handOpenness, 0.5, 0.05);
+            }
+        }
 
-function closePrivateChat(userId){
-  delete privateMessages[userId];
-  delete unreadCounts[userId];
-  savePrivateMessages();
-  if(activeChat === userId) activeChat = "group";
-  renderTabs();
-  renderMessages();
-}
-window.closePrivateChat = closePrivateChat;
+        const hands = new Hands({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }});
 
-function startPrivateChat(userId){
-  if(userId === myId) return;
-  if(!privateMessages[userId]) privateMessages[userId] = [];
-  switchChat(userId);
-  // Close mobile menu
-  userListPanel.classList.remove("open");
-  mobileOverlay.classList.remove("show");
-}
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
 
-function renderUsers(){
-  usersEl.innerHTML = "";
-  const ids = Object.keys(users);
-  ids.forEach(id=>{
-    const u = users[id];
-    const item = document.createElement("div");
-    item.className = "user-item" + (id === myId ? " me" : "");
-    item.innerHTML = "<div class='avatar'>" + escapeHtml((u.name||"U").slice(0,2).toUpperCase()) + "</div><div><strong>" + escapeHtml(u.name) + "</strong><div style='font-size:12px;color:var(--muted)'>"+ (id===myId? "You": "Click to chat") + "</div></div>";
-    if(id !== myId) item.onclick = () => startPrivateChat(id);
-    usersEl.appendChild(item);
-  });
-  myNameEl.textContent = myName || "";
-}
+        hands.onResults(onResults);
 
-function escapeHtml(s){ if(!s) return ""; return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;"); }
+        // Camera setup
+        const videoElement = uiElements.video;
+        const cameraUtils = new Camera(videoElement, {
+            onFrame: async () => {
+                if (config.useCamera) await hands.send({image: videoElement});
+            },
+            width: 640,
+            height: 480
+        });
+        
+        // Start Camera
+        cameraUtils.start().catch(e => {
+            console.error(e);
+            uiElements.loading.innerHTML = "<p>Camera denied/unavailable.<br>Using Mouse Fallback.</p>";
+            setTimeout(() => uiElements.loading.style.display = 'none', 2000);
+        });
 
-document.getElementById("sendBtn").addEventListener("click", ()=>{ sendMessage(msgInput.value); msgInput.value=""; bc.postMessage({type:"stopped_typing", payload:{name: myName}}); });
-msgInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); sendMessage(msgInput.value); msgInput.value=""; bc.postMessage({type:"stopped_typing", payload:{name: myName}}); } });
+        /**
+         * ANIMATION LOOP
+         */
+        
+        function lerp(start, end, amt) {
+            return (1 - amt) * start + amt * end;
+        }
 
-document.getElementById("logout").addEventListener("click", ()=>{ 
-  sessionStorage.removeItem("exha_name"); 
-  sessionStorage.removeItem("exha_id");
-  location.reload(); 
-});
+        const clock = new THREE.Clock();
 
-document.getElementById("loginBtn").addEventListener("click", attemptLogin);
-document.getElementById("passwordField").addEventListener("keydown", (e)=>{ if(e.key==="Enter") attemptLogin(); });
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            state.time += delta;
 
-function attemptLogin(){
-  const name = document.getElementById("nameField").value.trim();
-  const pass = document.getElementById("passwordField").value;
-  if(!name){ loginMsg.textContent = "Please enter your display name 😊"; return; }
-  if(pass !== PASSWORD){ loginMsg.textContent = "Wrong password — try again 🔐"; return; }
-  myName = name;
-  sessionStorage.setItem("exha_name", myName);
-  sessionStorage.setItem("exha_id", myId);
-  showApp();
-}
+            if (material) {
+                // 1. Update Uniforms
+                material.uniforms.uTime.value = state.time;
+                material.uniforms.uNoiseStrength.value = config.noiseStrength;
+                
+                // 2. Calculate Interaction Values
+                let expansionVal, scaleVal;
+                
+                if (config.useCamera && state.isTracking) {
+                    // Map Hand Openness (0 to 1) to Expansion (-1 to 1)
+                    // Open hand (1) -> Spread (1). Closed (0) -> Contract (-1)
+                    expansionVal = (state.handOpenness - 0.5) * 2.0; 
+                    
+                    // Map Hand Distance to Global Scale (Zoom)
+                    scaleVal = 0.5 + state.handDistance * 2.0; 
+                } else {
+                    // Mouse Fallback
+                    // Map mouse X (-1 to 1) to Expansion
+                    expansionVal = state.mouse.x;
+                    scaleVal = 1.0;
+                }
 
-function showApp(){
-  loginScreen.style.display="none";
-  app.style.display="grid";
-  announcePresence();
-  bc.postMessage({type:"request_state"});
-  renderUsers();
-  renderTabs();
-  renderMessages();
-}
+                // Smoothly interpolate shader uniforms
+                material.uniforms.uExpansion.value = lerp(material.uniforms.uExpansion.value, expansionVal, 0.1);
+                
+                // Adjust camera Z for scale/zoom effect
+                const targetZ = 15 + (1 - scaleVal) * 5;
+                camera.position.z = lerp(camera.position.z, targetZ, 0.05);
 
-setInterval(announcePresence,5000);
+                // 3. Morphing Logic (CPU Lerp to GPU buffer)
+                // This gives the "swarming" effect moving to new shapes
+                const positions = geometry.attributes.position.array;
+                const targets = state.targetPositions;
+                
+                let needsUpdate = false;
+                
+                // Optimization: Only update if not practically identical or if shape just changed
+                // For this demo, we run continuously for fluid attraction effect
+                for (let i = 0; i < config.particleCount; i++) {
+                    const idx = i * 3;
+                    // Move current pos towards target pos
+                    // Speed depends on "viscosity" or randomness
+                    const speed = 0.05; // + (Math.random() * 0.02);
+                    
+                    positions[idx] += (targets[idx] - positions[idx]) * speed;
+                    positions[idx+1] += (targets[idx+1] - positions[idx+1]) * speed;
+                    positions[idx+2] += (targets[idx+2] - positions[idx+2]) * speed;
+                }
+                
+                geometry.attributes.position.needsUpdate = true;
+                
+                // Rotate whole system slightly
+                points.rotation.y += 0.002;
+            }
 
-window.addEventListener("load", ()=>{
-  if(myName){ announcePresence(); bc.postMessage({type:"request_state"}); }
-});
+            renderer.render(scene, camera);
+        }
 
-window.addEventListener("beforeunload", ()=>{
-  try{ bc.postMessage({type:"presence", payload:{ id: myId, name: myName, leaving: true }}); }catch(e){}
-});
+        /**
+         * UI & EVENTS
+         */
+        
+        // Init
+        initParticles(config.particleCount);
+        animate();
+        
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
-</script>
+        // Mouse Move Fallback
+        document.addEventListener('mousemove', (e) => {
+            if (!config.useCamera) {
+                state.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                state.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            }
+        });
+
+        // Toggle Camera
+        document.getElementById('camera-toggle').addEventListener('change', (e) => {
+            config.useCamera = e.target.checked;
+            if (!config.useCamera) {
+                uiElements.camStatus.style.backgroundColor = '#ff4444'; // Red
+            } else if (state.isTracking) {
+                uiElements.camStatus.style.backgroundColor = '#00ff00';
+            }
+        });
+
+        // Shape Selection
+        document.querySelectorAll('.shape-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                generateShapeData(btn.dataset.shape);
+            });
+        });
+
+        // Particle Count
+        const countSlider = document.getElementById('particle-count');
+        countSlider.addEventListener('input', (e) => {
+            config.particleCount = parseInt(e.target.value);
+            document.getElementById('count-val').innerText = (config.particleCount / 1000) + 'k';
+            initParticles(config.particleCount); // Re-init needed
+        });
+
+        // Color
+        document.getElementById('color-picker').addEventListener('input', (e) => {
+            config.baseColor = new THREE.Color(e.target.value);
+            if(material) material.uniforms.uColor.value = config.baseColor;
+        });
+
+        // Noise
+        document.getElementById('noise-strength').addEventListener('input', (e) => {
+            config.noiseStrength = parseFloat(e.target.value);
+        });
+
+        // Screenshot
+        document.getElementById('screenshot-btn').addEventListener('click', () => {
+            renderer.render(scene, camera);
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'particles_' + Date.now() + '.png';
+            link.href = dataURL;
+            link.click();
+        });
+
+    </script>
 </body>
 </html>
