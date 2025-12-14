@@ -1,262 +1,215 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Gesture Controlled 3D Solar System</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Crystal (Ultra Lite)</title>
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <!-- Three.js -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
 
-  <!-- MediaPipe Hands (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: radial-gradient(circle at bottom, #020617, #000000);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-    #label {
-      text-shadow: 0 0 15px rgba(255,255,255,0.4);
-      letter-spacing: 0.3em;
-    }
-    #video {
-      position: absolute;
-      right: 1rem;
-      bottom: 1rem;
-      width: 160px;
-      opacity: 0.15;
-      pointer-events: none;
-    }
-  </style>
+<style>
+body {
+    margin: 0;
+    background: #050505;
+    overflow: hidden;
+    font-family: monospace;
+    color: #00ffcc;
+}
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+#ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border: 1px solid #00ffcc;
+}
+.status-dot {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    border-radius: 50%;
+    background: red;
+    margin-right: 5px;
+}
+.active { background: #00ff00; }
+.loading { background: yellow; }
+.input_video { display: none; }
+</style>
 </head>
-<body class="text-white">
 
-  <!-- Planet Label -->
-  <div class="absolute top-6 w-full text-center z-10">
-    <h1 id="label" class="text-3xl font-bold">EARTH</h1>
-  </div>
+<body>
 
-  <!-- Gesture Guide -->
-  <div class="absolute left-6 bottom-6 bg-black/60 backdrop-blur-md rounded-xl p-4 text-sm space-y-2 z-10">
-    <div class="font-semibold mb-2">Gesture Guide</div>
-    <div>✋ Open Hand — Next Planet</div>
-    <div>✊ Closed Fist — Zoom & Fast Spin</div>
-    <div>✌️ Peace Sign — Reset View</div>
-  </div>
+<div id="ui">
+    <div><span id="cam-dot" class="status-dot"></span>
+        <span id="status-text">Initializing...</span>
+    </div>
+    <div style="font-size:10px">FPS: <span id="fps">0</span></div>
+</div>
 
-  <!-- Webcam Video (hidden/minimal) -->
-  <video id="video" autoplay playsinline></video>
+<video class="input_video" playsinline muted></video>
 
-  <script>
-    /* ==========================
-       THREE.JS SETUP
-    ========================== */
-    const scene = new THREE.Scene();
+<script>
+// ---------------- SCENE ----------------
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x050505, 0.05);
 
-    const camera = new THREE.PerspectiveCamera(
-      60,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      2000
-    );
-    camera.position.set(0, 10, 35);
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 100);
+camera.position.z = 5;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    document.body.appendChild(renderer.domElement);
+const renderer = new THREE.WebGLRenderer({
+    antialias: false,
+    powerPreference: "low-power"
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(1);
+document.body.appendChild(renderer.domElement);
 
-    // Resize handling
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+// ---------------- OBJECT ----------------
+const geometry = new THREE.IcosahedronGeometry(1.5, 0);
+const material = new THREE.MeshBasicMaterial({
+    color: 0x00ffcc,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.8
+});
+const crystal = new THREE.Mesh(geometry, material);
+scene.add(crystal);
 
-    /* ==========================
-       LIGHTING & BACKGROUND
-    ========================== */
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-    scene.add(ambientLight);
+const core = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.5, 0),
+    new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true })
+);
+scene.add(core);
 
-    const sunLight = new THREE.PointLight(0xffffff, 2, 500);
-    sunLight.position.set(0, 0, 0);
-    scene.add(sunLight);
+// ---------------- STATE ----------------
+const state = {
+    expansion: 0,
+    hand: false,
+    mouseX: 0
+};
 
-    // Starfield
-    const starGeometry = new THREE.BufferGeometry();
-    const starCount = 2000;
-    const starPositions = [];
-    for (let i = 0; i < starCount; i++) {
-      starPositions.push(
-        (Math.random() - 0.5) * 2000,
-        (Math.random() - 0.5) * 2000,
-        (Math.random() - 0.5) * 2000
-      );
+const ui = {
+    dot: document.getElementById("cam-dot"),
+    text: document.getElementById("status-text"),
+    fps: document.getElementById("fps")
+};
+
+// ---------------- ANIMATION ----------------
+let frames = 0, lastFPS = 0;
+
+function animate(time) {
+    requestAnimationFrame(animate);
+
+    if (time - lastFPS > 1000) {
+        ui.fps.textContent = frames;
+        frames = 0;
+        lastFPS = time;
     }
-    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
-    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1 });
-    scene.add(new THREE.Points(starGeometry, starMaterial));
+    frames++;
 
-    /* ==========================
-       SUN & PLANETS
-    ========================== */
-    const planets = [];
-    const planetData = [
-      { name: 'EARTH', color: 0x2e7dff, size: 2, distance: 12, speed: 0.01 },
-      { name: 'MARS', color: 0xff5533, size: 1.5, distance: 18, speed: 0.008 },
-      { name: 'JUPITER', color: 0xd2b48c, size: 3.5, distance: 26, speed: 0.004 },
-      { name: 'SATURN', color: 0xf5deb3, size: 3, distance: 34, speed: 0.003 }
-    ];
+    let target = 1;
 
-    // Sun
-    const sun = new THREE.Mesh(
-      new THREE.SphereGeometry(5, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffcc33 })
-    );
-    scene.add(sun);
-
-    planetData.forEach((data, index) => {
-      const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(data.size, 32, 32),
-        new THREE.MeshStandardMaterial({ color: data.color })
-      );
-      mesh.userData = {
-        angle: Math.random() * Math.PI * 2,
-        speed: data.speed,
-        baseSpeed: data.speed,
-        distance: data.distance,
-        name: data.name
-      };
-      planets.push(mesh);
-      scene.add(mesh);
-    });
-
-    let currentPlanetIndex = 0;
-    let zoomed = false;
-    const label = document.getElementById('label');
-
-    function focusPlanet(index) {
-      const p = planets[index];
-      label.textContent = p.userData.name;
+    if (state.hand) {
+        target = 1 + state.expansion * 2;
+    } else {
+        target = 1 + Math.sin(time * 0.002) * 0.2 + Math.abs(state.mouseX) * 1.5;
     }
 
-    focusPlanet(0);
+    const scale = crystal.scale.x + (target - crystal.scale.x) * 0.1;
+    crystal.scale.set(scale, scale, scale);
+    core.scale.set(scale * 0.5, scale * 0.5, scale * 0.5);
 
-    /* ==========================
-       ANIMATION LOOP
-    ========================== */
-    function animate() {
-      requestAnimationFrame(animate);
+    crystal.rotation.x += 0.005;
+    crystal.rotation.y += 0.01;
+    core.rotation.x -= 0.01;
+    core.rotation.y -= 0.02;
 
-      planets.forEach(p => {
-        p.userData.angle += p.userData.speed;
-        p.position.set(
-          Math.cos(p.userData.angle) * p.userData.distance,
-          0,
-          Math.sin(p.userData.angle) * p.userData.distance
-        );
-        p.rotation.y += 0.01 * (p.userData.speed / p.userData.baseSpeed);
-      });
+    material.color.setHSL((scale * 100 % 360) / 360, 1, 0.5);
 
-      // Smooth camera follow
-      const target = planets[currentPlanetIndex].position.clone();
-      const desiredPosition = zoomed
-        ? target.clone().add(new THREE.Vector3(0, 3, 6))
-        : target.clone().add(new THREE.Vector3(0, 8, 20));
+    renderer.render(scene, camera);
+}
+animate(0);
 
-      camera.position.lerp(desiredPosition, 0.05);
-      camera.lookAt(target);
+// ---------------- INPUT ----------------
+addEventListener("mousemove", e => {
+    state.mouseX = e.clientX / innerWidth * 2 - 1;
+});
+addEventListener("resize", () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+});
 
-      renderer.render(scene, camera);
+// ---------------- CAMERA ----------------
+async function startCamera() {
+    const video = document.querySelector(".input_video");
+
+    try {
+        const hands = new Hands({
+            locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 0,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults(res => {
+            if (res.multiHandLandmarks?.length) {
+                state.hand = true;
+                ui.dot.className = "status-dot active";
+                ui.text.textContent = "Hand Detected";
+
+                const lm = res.multiHandLandmarks[0];
+                const wrist = lm[0];
+                const tip = lm[12]; // middle finger TIP
+
+                let d = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+                state.expansion = Math.min(Math.max((d - 0.1) * 4, 0), 1);
+            } else {
+                state.hand = false;
+                ui.text.textContent = "Camera Active (No Hand)";
+            }
+        });
+
+        const cam = new Camera(video, {
+            onFrame: async () => {
+                if (video.videoWidth > 0) {
+                    await hands.send({ image: video });
+                }
+            },
+            width: 320,
+            height: 240
+        });
+
+        await video.play();
+        await cam.start();
+
+        ui.dot.className = "status-dot active";
+        ui.text.textContent = "Camera Active";
+
+    } catch (e) {
+        console.error(e);
+        ui.text.textContent = "Camera Failed — Mouse Mode";
     }
+}
 
-    animate();
+setTimeout(startCamera, 1000);
+</script>
 
-    /* ==========================
-       MEDIAPIPE HANDS SETUP
-    ========================== */
-    const videoElement = document.getElementById('video');
-
-    const hands = new Hands({
-      locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
-
-    hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.7,
-      minTrackingConfidence: 0.7
-    });
-
-    let lastGesture = '';
-    let gestureCooldown = false;
-
-    function detectGesture(landmarks) {
-      const tips = [4, 8, 12, 16, 20];
-      const pip = [3, 6, 10, 14, 18];
-
-      const extended = tips.map((tip, i) => landmarks[tip].y < landmarks[pip[i]].y);
-
-      // Open hand
-      if (extended.every(v => v)) return 'open';
-
-      // Closed fist
-      if (extended.every(v => !v)) return 'fist';
-
-      // Peace sign (index + middle)
-      if (extended[1] && extended[2] && !extended[3] && !extended[4]) return 'peace';
-
-      return '';
-    }
-
-    hands.onResults(results => {
-      if (!results.multiHandLandmarks || gestureCooldown) return;
-
-      const landmarks = results.multiHandLandmarks[0];
-      const gesture = detectGesture(landmarks);
-
-      if (gesture && gesture !== lastGesture) {
-        gestureCooldown = true;
-        setTimeout(() => (gestureCooldown = false), 1200);
-
-        if (gesture === 'open') {
-          currentPlanetIndex = (currentPlanetIndex + 1) % planets.length;
-          focusPlanet(currentPlanetIndex);
-        }
-
-        if (gesture === 'fist') {
-          zoomed = true;
-          planets[currentPlanetIndex].userData.speed *= 2;
-        }
-
-        if (gesture === 'peace') {
-          zoomed = false;
-          planets[currentPlanetIndex].userData.speed =
-            planets[currentPlanetIndex].userData.baseSpeed;
-        }
-
-        lastGesture = gesture;
-      }
-    });
-
-    const cameraFeed = new Camera(videoElement, {
-      onFrame: async () => {
-        await hands.send({ image: videoElement });
-      },
-      width: 640,
-      height: 480
-    });
-
-    cameraFeed.start();
-  </script>
 </body>
 </html>
