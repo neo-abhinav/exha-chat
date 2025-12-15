@@ -1,266 +1,805 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon Crystal (Ultra Lite)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRAVITY HANDS - Hand Tracking Physics Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/matter-js@0.19.0/build/matter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js" crossorigin="anonymous"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0a0e27;
+            font-family: 'Space Grotesk', sans-serif;
+        }
 
-<!-- Load Three.js (3D Engine) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-<!-- Load MediaPipe Hands (AI) -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            overflow: hidden;
+        }
 
-<style>
-    body {
-        margin: 0;
-        background-color: #050505;
-        overflow: hidden;
-        font-family: monospace;
-        color: #00ffcc;
-    }
-    canvas {
-        display: block;
-        position: absolute;
-        top: 0; left: 0;
-        z-index: 1;
-    }
-    #ui {
-        position: absolute;
-        top: 10px; left: 10px;
-        z-index: 10;
-        background: rgba(0,0,0,0.7);
-        padding: 10px;
-        border: 1px solid #00ffcc;
-        border-radius: 4px;
-        pointer-events: none;
-    }
-    .status-dot {
-        display: inline-block;
-        width: 8px; height: 8px;
-        border-radius: 50%;
-        background: red;
-        margin-right: 5px;
-    }
-    .active { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
-    .loading { background: yellow; }
-    
-    #controls {
-        position: absolute;
-        bottom: 20px; width: 100%;
-        text-align: center;
-        z-index: 10;
-        color: #666;
-        font-size: 12px;
-        pointer-events: none;
-    }
-    /* Hidden video */
-    .input_video { display: none; }
-</style>
+        /* Animated background grid */
+        .background-grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(0deg, rgba(0, 255, 150, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 150, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: drift 20s linear infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes drift {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .nebula {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(0, 255, 150, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(60px);
+            animation: float 15s ease-in-out infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .nebula:nth-child(2) {
+            top: 20%;
+            right: 10%;
+            background: radial-gradient(circle, rgba(100, 200, 255, 0.08) 0%, transparent 70%);
+            animation-delay: 5s;
+        }
+
+        .nebula:nth-child(3) {
+            bottom: 10%;
+            left: 5%;
+            background: radial-gradient(circle, rgba(200, 100, 255, 0.08) 0%, transparent 70%);
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, 30px) scale(1.1); }
+        }
+
+        /* Scanline overlay */
+        .scanlines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1),
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 100;
+            animation: scanline-flicker 0.15s infinite;
+        }
+
+        @keyframes scanline-flicker {
+            0%, 100% { opacity: 0.05; }
+            50% { opacity: 0.1; }
+        }
+
+        .game-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Video feed PIP */
+        #videoInput {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: #000;
+            border-radius: 12px;
+            border: 2px solid #00ff96;
+            object-fit: cover;
+            transform: scaleX(-1);
+            box-shadow: 0 0 20px rgba(0, 255, 150, 0.3), inset 0 0 10px rgba(0, 255, 150, 0.1);
+            z-index: 50;
+            display: none;
+        }
+
+        /* Canvas */
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+        }
+
+        /* HUD Panel */
+        .hud-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 20px;
+            background: rgba(10, 14, 39, 0.7);
+            border: 2px solid #00ff96;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            color: #00ff96;
+            font-size: 14px;
+            min-width: 200px;
+            box-shadow: 0 0 20px rgba(0, 255, 150, 0.2);
+        }
+
+        .hud-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(0, 255, 150, 0.5);
+        }
+
+        .hud-stat {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .stat-label {
+            color: rgba(0, 255, 150, 0.7);
+        }
+
+        .stat-value {
+            color: #00ff96;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(0, 255, 150, 0.4);
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 25px;
+            background: rgba(10, 14, 39, 0.8);
+            border: 2px solid #00ff96;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            box-shadow: 0 0 20px rgba(0, 255, 150, 0.2);
+        }
+
+        .control-text {
+            color: #00ff96;
+            font-size: 13px;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            text-shadow: 0 0 8px rgba(0, 255, 150, 0.3);
+        }
+
+        .control-keys {
+            margin-top: 8px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .key-hint {
+            color: #00ff96;
+            font-size: 12px;
+            padding: 4px 8px;
+            border: 1px solid rgba(0, 255, 150, 0.4);
+            border-radius: 4px;
+            background: rgba(0, 255, 150, 0.05);
+        }
+
+        /* Buttons */
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: rgba(0, 255, 150, 0.1);
+            border: 2px solid #00ff96;
+            color: #00ff96;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 8px rgba(0, 255, 150, 0.3);
+            box-shadow: 0 0 10px rgba(0, 255, 150, 0.1);
+        }
+
+        button:hover {
+            background: rgba(0, 255, 150, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 150, 0.3);
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* Loading spinner */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 100;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 255, 150, 0.2);
+            border-top-color: #00ff96;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #00ff96;
+            font-size: 16px;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(0, 255, 150, 0.5);
+        }
+
+        /* Hand skeleton styling */
+        .hand-joint {
+            fill: #00ff96;
+            filter: drop-shadow(0 0 4px rgba(0, 255, 150, 0.8));
+        }
+
+        .hand-connection {
+            stroke: url(#gradientGlow);
+            stroke-width: 2;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 3px rgba(0, 255, 150, 0.5));
+        }
+
+        /* Gradient defs would be in SVG, using canvas instead */
+
+        /* Floating particles */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 768px) {
+            #videoInput {
+                width: 150px;
+                height: 112px;
+            }
+
+            .hud-panel {
+                top: 10px;
+                left: 10px;
+                padding: 15px;
+                font-size: 12px;
+                min-width: auto;
+            }
+
+            .control-panel {
+                bottom: 10px;
+                padding: 12px 15px;
+                font-size: 11px;
+            }
+
+            .key-hint {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="background-grid"></div>
+        <div class="nebula"></div>
+        <div class="nebula"></div>
+        <div class="nebula"></div>
+        <div class="scanlines"></div>
 
+        <div class="game-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            <video id="videoInput" autoplay playsinline muted></video>
 
-<div id="ui">
-    <div><span id="cam-dot" class="status-dot"></span> <span id="status-text">Starting Graphics...</span></div>
-    <div style="margin-top:5px; font-size: 10px; color: #aaa;">FPS: <span id="fps">0</span></div>
-</div>
+            <div class="loading">
+                <div class="spinner"></div>
+                <div class="loading-text">Initializing Hand Tracking...</div>
+            </div>
 
-<div id="controls">
-    Control: Open Hand (Camera) OR Mouse Move (Manual)
-</div>
+            <div class="hud-panel">
+                <div class="hud-title">⚡ GRAVITY HANDS</div>
+                <div class="hud-stat">
+                    <span class="stat-label">Cubes:</span>
+                    <span class="stat-value" id="cubeCount">0</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="stat-label">Held:</span>
+                    <span class="stat-value" id="heldStatus">None</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="stat-label">FPS:</span>
+                    <span class="stat-value" id="fps">60</span>
+                </div>
+                <button onclick="resetGame()" style="width: 100%; margin-top: 10px; margin-left: 0; margin-right: 0;">Reset World</button>
+            </div>
 
-<!-- Video Element for processing -->
-<video class="input_video" playsinline muted autoplay></video>
+            <div class="control-panel">
+                <div class="control-text">Pinch with thumb & index to pick up cubes</div>
+                <div class="control-keys">
+                    <div class="key-hint">🎥 Space: Toggle Camera</div>
+                    <div class="key-hint">🔄 R: Reset</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script>
-    // --- 1. SETUP VERY SIMPLE 3D SCENE ---
-    const scene = new THREE.Scene();
-    // Add some fog for depth
-    scene.fog = new THREE.FogExp2(0x050505, 0.05);
+    <script>
+        // ============================================
+        // MATTER.JS PHYSICS SETUP
+        // ============================================
+        const Engine = Matter.Engine;
+        const World = Matter.World;
+        const Body = Matter.Body;
+        const Bodies = Matter.Bodies;
+        const Events = Matter.Events;
+        const Constraint = Matter.Constraint;
+        const Composite = Matter.Composite;
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.z = 5;
+        let engine, world, groundBody;
+        let cubes = [];
+        let heldCube = null;
+        let handProxy = null;
 
-    const renderer = new THREE.WebGLRenderer({ 
-        antialias: false, // Turn off antialiasing for speed
-        powerPreference: "low-power" // Tell browser to prioritize battery/speed
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    // Limit pixel ratio to 1 for old screens (prevents lag on retina screens)
-    renderer.setPixelRatio(1); 
-    document.body.appendChild(renderer.domElement);
+        // Physics constants
+        const PHYSICS = {
+            gravity: 1,
+            friction: 0.3,
+            restitution: 0.4,
+            density: 0.004,
+        };
 
-    // --- 2. CREATE THE OBJECT (Low Poly Crystal) ---
-    // Icosahedron is very low poly (20 faces)
-    const geometry = new THREE.IcosahedronGeometry(1.5, 0); 
-    
-    // Wireframe material is very fast to render
-    const material = new THREE.MeshBasicMaterial({ 
-        color: 0x00ffcc, 
-        wireframe: true,
-        transparent: true,
-        opacity: 0.8
-    });
-    
-    const crystal = new THREE.Mesh(geometry, material);
-    scene.add(crystal);
+        // Cube configuration
+        const CUBE_SIZE = 40;
+        const CUBE_CONFIG = {
+            size: CUBE_SIZE,
+            color: '#00ff96',
+            borderColor: '#00ffff',
+            borderWidth: 2,
+        };
 
-    // Add an inner core
-    const coreGeo = new THREE.IcosahedronGeometry(0.5, 0);
-    const coreMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true });
-    const core = new THREE.Mesh(coreGeo, coreMat);
-    scene.add(core);
+        // Initialize physics engine
+        function initPhysics(canvas) {
+            engine = Engine.create();
+            world = engine.world;
+            world.gravity.y = PHYSICS.gravity;
 
-    // --- 3. STATE MANAGEMENT ---
-    const state = {
-        expansion: 0, // 0 to 1
-        isHandFound: false,
-        mouseX: 0
-    };
+            // Create walls and floor
+            const thickness = 50;
+            const floorColor = 'rgba(0, 255, 150, 0.2)';
 
-    const ui = {
-        dot: document.getElementById('cam-dot'),
-        text: document.getElementById('status-text'),
-        fps: document.getElementById('fps')
-    };
+            // Floor
+            const floor = Bodies.rectangle(
+                canvas.width / 2,
+                canvas.height - thickness / 2,
+                canvas.width + thickness * 2,
+                thickness,
+                { isStatic: true, friction: 0.5 }
+            );
+            floor.color = floorColor;
 
-    // --- 4. ANIMATION LOOP ---
-    let lastTime = 0;
-    let frameCount = 0;
-    let lastFpsTime = 0;
+            // Walls
+            const leftWall = Bodies.rectangle(-thickness / 2, canvas.height / 2, thickness, canvas.height + 100, { isStatic: true });
+            const rightWall = Bodies.rectangle(canvas.width + thickness / 2, canvas.height / 2, thickness, canvas.height + 100, { isStatic: true });
 
-    function animate(time) {
-        requestAnimationFrame(animate);
+            leftWall.color = floorColor;
+            rightWall.color = floorColor;
 
-        // FPS Counter
-        if (time - lastFpsTime >= 1000) {
-            ui.fps.innerText = frameCount;
-            frameCount = 0;
-            lastFpsTime = time;
+            World.add(world, [floor, leftWall, rightWall]);
+
+            // Create initial cubes
+            createInitialCubes(canvas);
+
+            // Start engine loop
+            const runner = Matter.Runner.create();
+            Matter.Runner.run(runner, engine);
         }
-        frameCount++;
 
-        // 1. Determine Input Source
-        let targetScale = 1.0;
-        
-        if (state.isHandFound) {
-            // If camera sees hand, use hand openness
-            targetScale = 1.0 + (state.expansion * 2.0);
-        } else {
-            // Fallback: Breathing animation + Mouse
-            const breath = Math.sin(time * 0.002) * 0.2; // Auto breathe
-            const mouseInput = Math.abs(state.mouseX) * 1.5; // Mouse override
-            targetScale = 1.0 + breath + mouseInput;
+        function createInitialCubes(canvas) {
+            const cubeCount = 5;
+            for (let i = 0; i < cubeCount; i++) {
+                const x = Math.random() * (canvas.width - CUBE_SIZE * 2) + CUBE_SIZE;
+                const y = canvas.height - CUBE_SIZE * 3 - i * (CUBE_SIZE + 20);
+                createCube(x, y);
+            }
+            updateCubeCounter();
         }
 
-        // 2. Smoothly animate the crystal (Lerp)
-        const currentScale = crystal.scale.x;
-        const smooth = 0.1; // speed of smoothing
-        const newScale = currentScale + (targetScale - currentScale) * smooth;
-
-        crystal.scale.set(newScale, newScale, newScale);
-        core.scale.set(newScale * 0.5, newScale * 0.5, newScale * 0.5);
-
-        // 3. Rotation
-        crystal.rotation.x += 0.005;
-        crystal.rotation.y += 0.01;
-        core.rotation.x -= 0.01;
-        core.rotation.y -= 0.02;
-
-        // 4. Color Shift based on size
-        const hue = (newScale * 100) % 360;
-        material.color.setHSL(hue / 360, 1, 0.5);
-
-        renderer.render(scene, camera);
-    }
-    
-    // Start animation immediately (don't wait for camera)
-    animate(0);
-    ui.text.innerText = "3D Ready. Loading Camera...";
-    ui.dot.className = "status-dot loading";
-
-    // --- 5. INPUT HANDLERS (Mouse/Touch) ---
-    window.addEventListener('mousemove', (e) => {
-        // Normalize mouse from -1 to 1
-        state.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-    });
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    // --- 6. CAMERA & AI SETUP (Lazy Loading) ---
-    async function startCamera() {
-        try {
-            const videoElement = document.querySelector('.input_video');
-            
-            const hands = new Hands({locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`;
-            }});
-
-            hands.setOptions({
-                maxNumHands: 1,
-                modelComplexity: 0, // 0 = LITE (Fastest), 1 = FULL
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
+        function createCube(x, y) {
+            const cube = Bodies.rectangle(x, y, CUBE_SIZE, CUBE_SIZE, {
+                friction: PHYSICS.friction,
+                restitution: PHYSICS.restitution,
+                density: PHYSICS.density,
             });
 
-            hands.onResults((results) => {
-                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                    state.isHandFound = true;
-                    ui.dot.className = "status-dot active";
-                    ui.text.innerText = "Hand Detected";
-                    
-                    // Calculate Openness
-                    const lm = results.multiHandLandmarks[0];
-                    const wrist = lm[0];
-                    const tip = lm[9]; // Middle finger tip
-                    
-                    // Distance between wrist and middle finger
-                    const dist = Math.sqrt(
-                        Math.pow(tip.x - wrist.x, 2) + 
-                        Math.pow(tip.y - wrist.y, 2)
-                    );
-                    
-                    // Map distance to 0-1 range
-                    // A fist is usually around 0.1, open hand around 0.3-0.4
-                    let open = (dist - 0.1) * 4.0; 
-                    if (open < 0) open = 0;
-                    if (open > 1) open = 1;
-                    
-                    state.expansion = open;
-                } else {
-                    state.isHandFound = false;
-                    ui.dot.className = "status-dot active"; // Still active, just no hand
-                    ui.text.innerText = "Camera Active (No Hand)";
+            cube.color = CUBE_CONFIG.color;
+            cube.borderColor = CUBE_CONFIG.borderColor;
+            cube.borderWidth = CUBE_CONFIG.borderWidth;
+            cube.isGrabbed = false;
+
+            World.add(world, cube);
+            cubes.push(cube);
+            return cube;
+        }
+
+        function resetGame() {
+            // Clear all cubes
+            cubes.forEach(cube => World.remove(world, cube));
+            cubes = [];
+            heldCube = null;
+
+            // Reinitialize
+            const canvas = document.getElementById('gameCanvas');
+            createInitialCubes(canvas);
+        }
+
+        function updateCubeCounter() {
+            document.getElementById('cubeCount').textContent = cubes.length;
+        }
+
+        // ============================================
+        // HAND TRACKING WITH MEDIAPIPE
+        // ============================================
+        let handDetector = null;
+        let handLandmarks = null;
+
+        async function initHandTracking(videoElement) {
+            const vision = await window.FilesetResolver.forVisionTasks(
+                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
+            );
+
+            handDetector = await window.HandLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                    modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
+                },
+                runningMode: 'VIDEO',
+                numHands: 2
+            });
+        }
+
+        function getHandLandmarks(videoElement) {
+            if (!handDetector || !videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) return null;
+
+            try {
+                const results = handDetector.detectForVideo(videoElement, performance.now());
+                return results.landmarks;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ============================================
+        // HAND INTERACTION & PINCH DETECTION
+        // ============================================
+        const PINCH_THRESHOLD = 30; // pixels
+
+        function detectPinch(landmarks) {
+            if (!landmarks || landmarks.length === 0) return null;
+
+            const hand = landmarks[0];
+            if (!hand || hand.length < 12) return null;
+
+            const thumb = hand[4];
+            const index = hand[8];
+
+            const distance = Math.hypot(
+                thumb.x - index.x,
+                thumb.y - index.y
+            );
+
+            if (distance < PINCH_THRESHOLD) {
+                return {
+                    x: (thumb.x + index.x) / 2,
+                    y: (thumb.y + index.y) / 2,
+                    pinching: true,
+                    strength: Math.max(0, 1 - distance / PINCH_THRESHOLD)
+                };
+            }
+
+            return { x: (thumb.x + index.x) / 2, y: (thumb.y + index.y) / 2, pinching: false };
+        }
+
+        function updateHandInteraction(canvas, handPos) {
+            if (!handPos) return;
+
+            const canvasX = handPos.x * canvas.width;
+            const canvasY = handPos.y * canvas.height;
+
+            if (handPos.pinching) {
+                if (!heldCube) {
+                    // Try to grab a cube
+                    for (let cube of cubes) {
+                        const dist = Math.hypot(cube.position.x - canvasX, cube.position.y - canvasY);
+                        if (dist < CUBE_SIZE * 1.5) {
+                            heldCube = cube;
+                            heldCube.isGrabbed = true;
+                            document.getElementById('heldStatus').textContent = '✓ Grabbed';
+                            break;
+                        }
+                    }
+                }
+
+                if (heldCube) {
+                    // Apply constraint to drag cube
+                    const forceMagnitude = 0.05;
+                    const desiredVx = (canvasX - heldCube.position.x) * forceMagnitude;
+                    const desiredVy = (canvasY - heldCube.position.y) * forceMagnitude;
+
+                    Body.setVelocity(heldCube, {
+                        x: heldCube.velocity.x * 0.8 + desiredVx * 0.2,
+                        y: heldCube.velocity.y * 0.8 + desiredVy * 0.2
+                    });
+                }
+            } else {
+                if (heldCube) {
+                    // Release cube with momentum
+                    heldCube.isGrabbed = false;
+                    heldCube = null;
+                    document.getElementById('heldStatus').textContent = 'None';
+                }
+            }
+        }
+
+        // ============================================
+        // CANVAS RENDERING
+        // ============================================
+        function drawGlowingCircle(ctx, x, y, radius, color = '#00ff96') {
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawLine(ctx, x1, y1, x2, y2, color = '#00ff96', width = 2) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawHand(ctx, landmarks, canvas) {
+            if (!landmarks || landmarks.length === 0) return;
+
+            const hand = landmarks[0];
+            if (!hand || hand.length < 21) return;
+
+            // Convert normalized coordinates to canvas coordinates
+            const points = hand.map(lm => ({
+                x: lm.x * canvas.width,
+                y: lm.y * canvas.height
+            }));
+
+            // Hand connections (from MediaPipe)
+            const connections = [
+                [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
+                [0, 5], [5, 6], [6, 7], [7, 8], // Index
+                [0, 9], [9, 10], [10, 11], [11, 12], // Middle
+                [0, 13], [13, 14], [14, 15], [15, 16], // Ring
+                [0, 17], [17, 18], [18, 19], [19, 20], // Pinky
+                [5, 9], [9, 13], [13, 17] // Palm connections
+            ];
+
+            // Draw connections with gradient effect
+            connections.forEach(([from, to]) => {
+                const p1 = points[from];
+                const p2 = points[to];
+                drawLine(ctx, p1.x, p1.y, p2.x, p2.y, '#00ffff', 1.5);
+            });
+
+            // Draw joints
+            points.forEach((point, idx) => {
+                const radius = idx === 0 ? 6 : 4; // Wrist is larger
+                drawGlowingCircle(ctx, point.x, point.y, radius, '#00ff96');
+            });
+        }
+
+        function drawCubes(ctx) {
+            cubes.forEach(cube => {
+                const vertices = cube.vertices;
+                ctx.fillStyle = cube.color;
+                ctx.strokeStyle = cube.borderColor;
+                ctx.lineWidth = cube.borderWidth;
+                ctx.shadowColor = cube.borderColor;
+                ctx.shadowBlur = 8;
+
+                ctx.beginPath();
+                ctx.moveTo(vertices[0].x, vertices[0].y);
+                for (let i = 1; i < vertices.length; i++) {
+                    ctx.lineTo(vertices[i].x, vertices[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Highlight if grabbed
+                if (cube.isGrabbed) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = '#ffff00';
+                    ctx.shadowBlur = 15;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
                 }
             });
+        }
 
-            const cameraUtils = new Camera(videoElement, {
-                onFrame: async () => {
-                    await hands.send({image: videoElement});
-                },
-                width: 320,  // Very low resolution input for speed
-                height: 240
+        function render(ctx, canvas) {
+            // Clear canvas
+            ctx.fillStyle = 'rgba(10, 14, 39, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw cubes
+            drawCubes(ctx);
+
+            // Draw hand skeleton
+            if (handLandmarks) {
+                drawHand(ctx, handLandmarks, canvas);
+            }
+        }
+
+        // ============================================
+        // ANIMATION LOOP
+        // ============================================
+        let lastTime = performance.now();
+        let frameCount = 0;
+
+        async function animate(videoElement) {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            function loop() {
+                // Get hand landmarks
+                handLandmarks = getHandLandmarks(videoElement);
+
+                // Detect pinch and update interaction
+                if (handLandmarks) {
+                    const pinchPos = detectPinch(handLandmarks);
+                    updateHandInteraction(canvas, pinchPos);
+                }
+
+                // Render
+                render(ctx, canvas);
+
+                // FPS counter
+                frameCount++;
+                const now = performance.now();
+                if (now - lastTime >= 1000) {
+                    document.getElementById('fps').textContent = frameCount;
+                    frameCount = 0;
+                    lastTime = now;
+                }
+
+                requestAnimationFrame(loop);
+            }
+
+            loop();
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        async function init() {
+            const videoInput = document.getElementById('videoInput');
+            const canvas = document.getElementById('gameCanvas');
+
+            // Set canvas size
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Initialize physics
+            initPhysics(canvas);
+
+            // Request camera access
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user' }
+                });
+                videoInput.srcObject = stream;
+                videoInput.style.display = 'block';
+            } catch (e) {
+                console.warn('Camera access denied:', e);
+            }
+
+            // Initialize hand tracking
+            try {
+                await initHandTracking(videoInput);
+                document.querySelector('.loading').style.display = 'none';
+            } catch (e) {
+                console.warn('Hand tracking initialization failed:', e);
+                document.querySelector('.loading-text').textContent = 'Hand tracking unavailable. Game ready!';
+                setTimeout(() => {
+                    document.querySelector('.loading').style.display = 'none';
+                }, 2000);
+            }
+
+            // Start animation
+            animate(videoInput);
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
             });
 
-            await cameraUtils.start();
-
-        } catch (error) {
-            console.error(error);
-            ui.dot.className = "status-dot";
-            ui.text.innerText = "Camera Failed. Use Mouse.";
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ') {
+                    videoInput.style.display = videoInput.style.display === 'none' ? 'block' : 'none';
+                    e.preventDefault();
+                }
+                if (e.key === 'r' || e.key === 'R') {
+                    resetGame();
+                    e.preventDefault();
+                }
+            });
         }
-    }
 
-    // Delay camera start slightly to let UI render
-    setTimeout(startCamera, 1000);
-
-</script>
+        // Start when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+        window.addEventListener('load', init);
+    </script>
 </body>
 </html>
